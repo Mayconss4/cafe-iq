@@ -1,0 +1,137 @@
+services:
+  api-gateway:
+    build: ./api-gateway
+    container_name: cafeiq-api-gateway
+    ports:
+      - "3000:3000"
+    networks:
+      - cafeiq-net
+    # Fix 3: gateway agora aguarda rag, mcp e controlador (além do event-bus)
+    depends_on:
+      event-bus:
+        condition: service_healthy
+      servico-rag:
+        condition: service_started
+      servico-mcp:
+        condition: service_started
+      servico-controlador:
+        condition: service_started
+    environment:
+      - NODE_ENV=development
+    restart: unless-stopped
+
+  servico-rag:
+    build: ./servico-rag
+    container_name: cafeiq-servico-rag
+    ports:
+      - "8001:8001"
+    networks:
+      - cafeiq-net
+    # Fix 4: aguarda RabbitMQ estar saudável antes de subir
+    depends_on:
+      chromadb:
+        condition: service_started
+      ollama:
+        condition: service_started
+      event-bus:
+        condition: service_healthy
+    environment:
+      - PYTHONUNBUFFERED=1
+    restart: unless-stopped
+
+  servico-mcp:
+    build: ./servico-mcp
+    container_name: cafeiq-servico-mcp
+    ports:
+      - "8002:8002"
+    networks:
+      - cafeiq-net
+    # Fix 5: removida dependência desnecessária do ollama (MCP não usa LLM)
+    depends_on:
+      event-bus:
+        condition: service_healthy
+    environment:
+      - PYTHONUNBUFFERED=1
+    restart: unless-stopped
+
+  servico-scrapper:
+    build: ./servico-scrapper
+    container_name: cafeiq-servico-scrapper
+    ports:
+      - "8003:8003"
+    networks:
+      - cafeiq-net
+    # Fix 4: aguarda RabbitMQ estar saudável antes de subir
+    depends_on:
+      event-bus:
+        condition: service_healthy
+    environment:
+      - PYTHONUNBUFFERED=1
+    restart: unless-stopped
+
+  servico-controlador:
+    build: ./servico-controlador
+    container_name: cafeiq-servico-controlador
+    ports:
+      - "3001:3001"
+    networks:
+      - cafeiq-net
+    depends_on:
+      event-bus:
+        condition: service_healthy
+    environment:
+      - NODE_ENV=development
+    restart: unless-stopped
+
+  ollama:
+    image: ollama/ollama
+    container_name: cafeiq-ollama
+    ports:
+      - "11434:11434"
+    networks:
+      - cafeiq-net
+    volumes:
+      - ollama-data:/root/.ollama
+    restart: unless-stopped
+
+  chromadb:
+    image: chromadb/chroma:0.5.3
+    container_name: cafeiq-chromadb
+    ports:
+      - "8000:8000"
+    networks:
+      - cafeiq-net
+    volumes:
+      - chroma-data:/chroma/chroma
+    restart: unless-stopped
+
+  # Fix 4: healthcheck no RabbitMQ garante que está pronto antes dos dependentes
+  event-bus:
+    image: rabbitmq:3-management
+    container_name: cafeiq-event-bus
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    networks:
+      - cafeiq-net
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    environment:
+      - RABBITMQ_DEFAULT_USER=cafeiq
+      - RABBITMQ_DEFAULT_PASS=cafeiq123
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 20s
+    restart: unless-stopped
+
+networks:
+  cafeiq-net:
+    driver: bridge
+
+volumes:
+  ollama-data:
+  chroma-data:
+  rabbitmq-data:
