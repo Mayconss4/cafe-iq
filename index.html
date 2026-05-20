@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CaféIQ</title>
+  <style>
+    /* ── Reset & variables ─────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --espresso:   #2c1503;
+      --coffee:     #6f4e37;
+      --caramel:    #c8a97e;
+      --cream:      #f5e6d3;
+      --parchment:  #fdf6f0;
+      --border:     #e2cfbb;
+      --text:       #2c1810;
+      --text-muted: #8b6e56;
+      --ok:         #3a7d44;
+      --ok-bg:      #e8f5ec;
+      --err:        #b83232;
+      --err-bg:     #fdeaea;
+      --warn-bg:    #fff8e1;
+      --shadow:     0 2px 8px rgba(44,21,3,.10);
+      --radius:     10px;
+    }
+
+    html, body {
+      height: 100%;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: var(--parchment);
+      color: var(--text);
+    }
+
+    /* ── Layout ────────────────────────────────────────────────────────── */
+    .app {
+      display: grid;
+      grid-template-rows: 56px 1fr;
+      grid-template-columns: 1fr 280px;
+      grid-template-areas:
+        "header header"
+        "chat   sidebar";
+      height: 100vh;
+    }
+
+    /* ── Header ────────────────────────────────────────────────────────── */
+    header {
+      grid-area: header;
+      background: var(--espresso);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 0 24px;
+      box-shadow: 0 2px 6px rgba(0,0,0,.3);
+    }
+
+    header .logo { font-size: 1.4rem; }
+
+    header h1 {
+      color: var(--cream);
+      font-size: 1.15rem;
+      font-weight: 600;
+      letter-spacing: .04em;
+    }
+
+    header h1 span { color: var(--caramel); }
+
+    header .tagline {
+      margin-left: auto;
+      color: var(--caramel);
+      font-size: .78rem;
+      opacity: .85;
+    }
+
+    /* ── Chat panel ────────────────────────────────────────────────────── */
+    .chat-panel {
+      grid-area: chat;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      scroll-behavior: smooth;
+    }
+
+    .messages::-webkit-scrollbar { width: 6px; }
+    .messages::-webkit-scrollbar-track { background: transparent; }
+    .messages::-webkit-scrollbar-thumb { background: var(--caramel); border-radius: 99px; }
+
+    /* welcome state */
+    .welcome {
+      margin: auto;
+      text-align: center;
+      color: var(--text-muted);
+      padding: 40px 20px;
+    }
+    .welcome .icon { font-size: 3rem; margin-bottom: 12px; }
+    .welcome p { font-size: .95rem; line-height: 1.6; }
+
+    /* message bubbles */
+    .msg { display: flex; flex-direction: column; max-width: 78%; gap: 4px; }
+    .msg.user { align-self: flex-end; align-items: flex-end; }
+    .msg.assistant { align-self: flex-start; align-items: flex-start; }
+
+    .msg .label {
+      font-size: .7rem;
+      font-weight: 600;
+      letter-spacing: .05em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+
+    .bubble {
+      padding: 11px 15px;
+      border-radius: var(--radius);
+      line-height: 1.6;
+      font-size: .92rem;
+      box-shadow: var(--shadow);
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .msg.user .bubble {
+      background: var(--coffee);
+      color: #fff;
+      border-bottom-right-radius: 3px;
+    }
+
+    .msg.assistant .bubble {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-bottom-left-radius: 3px;
+    }
+
+    .sources {
+      font-size: .72rem;
+      color: var(--text-muted);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+    }
+
+    .sources span { font-weight: 600; }
+
+    .source-tag {
+      background: var(--cream);
+      border: 1px solid var(--border);
+      border-radius: 99px;
+      padding: 1px 8px;
+    }
+
+    /* typing indicator */
+    .typing .bubble {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      padding: 12px 16px;
+    }
+    .dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--caramel);
+      animation: bounce .9s infinite ease-in-out;
+    }
+    .dot:nth-child(2) { animation-delay: .15s; }
+    .dot:nth-child(3) { animation-delay: .30s; }
+    @keyframes bounce {
+      0%, 80%, 100% { transform: translateY(0); }
+      40%           { transform: translateY(-6px); }
+    }
+
+    /* error bubble */
+    .msg.error .bubble {
+      background: var(--err-bg);
+      border: 1px solid #f5c6c6;
+      color: var(--err);
+    }
+
+    /* ── Input bar ─────────────────────────────────────────────────────── */
+    .input-bar {
+      padding: 14px 24px 18px;
+      background: var(--parchment);
+      border-top: 1px solid var(--border);
+      display: flex;
+      gap: 10px;
+      align-items: flex-end;
+    }
+
+    textarea {
+      flex: 1;
+      resize: none;
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius);
+      padding: 10px 14px;
+      font-family: inherit;
+      font-size: .92rem;
+      color: var(--text);
+      background: #fff;
+      outline: none;
+      transition: border-color .2s;
+      max-height: 120px;
+      min-height: 44px;
+      line-height: 1.5;
+      overflow-y: auto;
+    }
+    textarea:focus { border-color: var(--coffee); }
+    textarea::placeholder { color: var(--text-muted); }
+
+    button#send-btn {
+      height: 44px;
+      padding: 0 20px;
+      background: var(--coffee);
+      color: #fff;
+      border: none;
+      border-radius: var(--radius);
+      font-size: .9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background .2s, transform .1s;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    button#send-btn:hover:not(:disabled)  { background: var(--espresso); }
+    button#send-btn:active:not(:disabled) { transform: scale(.97); }
+    button#send-btn:disabled { background: var(--caramel); cursor: not-allowed; }
+
+    /* ── Sidebar ───────────────────────────────────────────────────────── */
+    .sidebar {
+      grid-area: sidebar;
+      background: #fff;
+      border-left: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .sidebar-header {
+      padding: 14px 16px 10px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .sidebar-header h2 {
+      font-size: .8rem;
+      font-weight: 700;
+      letter-spacing: .07em;
+      text-transform: uppercase;
+      color: var(--coffee);
+    }
+
+    #refresh-time {
+      font-size: .68rem;
+      color: var(--text-muted);
+    }
+
+    .service-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 12px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .service-card {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      transition: border-color .3s;
+    }
+
+    .service-card.ok  { border-left: 3px solid var(--ok); }
+    .service-card.err { border-left: 3px solid var(--err); }
+    .service-card.loading { border-left: 3px solid var(--caramel); }
+
+    .service-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .service-name {
+      font-size: .82rem;
+      font-weight: 600;
+      color: var(--text);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .status-badge {
+      font-size: .68rem;
+      font-weight: 700;
+      letter-spacing: .05em;
+      text-transform: uppercase;
+      padding: 2px 8px;
+      border-radius: 99px;
+      flex-shrink: 0;
+    }
+
+    .badge-ok      { background: var(--ok-bg);   color: var(--ok); }
+    .badge-err     { background: var(--err-bg);   color: var(--err); }
+    .badge-loading { background: var(--warn-bg);  color: #7a5c00; }
+
+    .service-meta {
+      font-size: .7rem;
+      color: var(--text-muted);
+    }
+
+    /* gateway summary row */
+    .gateway-row {
+      padding: 8px 12px;
+      margin: 0 12px 0;
+      border-radius: 8px;
+      background: var(--cream);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: .78rem;
+      font-weight: 600;
+      color: var(--coffee);
+      flex-shrink: 0;
+    }
+
+    #progress-bar {
+      height: 2px;
+      background: var(--cream);
+      flex-shrink: 0;
+      overflow: hidden;
+    }
+    #progress-fill {
+      height: 100%;
+      width: 0%;
+      background: var(--caramel);
+      transition: width linear;
+    }
+
+    /* ── Responsive ────────────────────────────────────────────────────── */
+    @media (max-width: 640px) {
+      .app {
+        grid-template-areas:
+          "header header"
+          "chat   chat";
+        grid-template-columns: 1fr;
+      }
+      .sidebar { display: none; }
+    }
+  </style>
+</head>
+<body>
+<div class="app">
+
+  <!-- Header -->
+  <header>
+    <span class="logo">☕</span>
+    <h1>Café<span>IQ</span></h1>
+    <span class="tagline">Assistente inteligente do mercado de café</span>
+  </header>
+
+  <!-- Chat panel -->
+  <main class="chat-panel">
+    <div class="messages" id="messages">
+      <div class="welcome" id="welcome">
+        <div class="icon">☕</div>
+        <p>Olá! Sou o CaféIQ.<br>
+           Pergunte sobre cotações, clima, safra<br>ou qualquer tema do mercado de café.</p>
+      </div>
+    </div>
+
+    <div class="input-bar">
+      <textarea
+        id="input"
+        rows="1"
+        placeholder="Digite sua pergunta sobre café…"
+        maxlength="2000"
+      ></textarea>
+      <button id="send-btn">Perguntar</button>
+    </div>
+  </main>
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <h2>Serviços</h2>
+      <span id="refresh-time">—</span>
+    </div>
+
+    <div id="progress-bar"><div id="progress-fill"></div></div>
+
+    <div class="gateway-row" id="gateway-row">
+      <span>API Gateway</span>
+      <span id="gateway-status">—</span>
+    </div>
+
+    <div class="service-list" id="service-list">
+      <!-- populated by JS -->
+    </div>
+  </aside>
+
+</div>
+
+<script>
+  /* ── Constants ────────────────────────────────────────────────────────── */
+  const API_BASE        = 'http://localhost:3000';
+  const HEALTH_INTERVAL = 10_000; // ms
+
+  /* ── DOM refs ─────────────────────────────────────────────────────────── */
+  const messagesEl   = document.getElementById('messages');
+  const welcomeEl    = document.getElementById('welcome');
+  const inputEl      = document.getElementById('input');
+  const sendBtn      = document.getElementById('send-btn');
+  const serviceList  = document.getElementById('service-list');
+  const gatewayRow   = document.getElementById('gateway-row');
+  const gatewayStatus= document.getElementById('gateway-status');
+  const refreshTime  = document.getElementById('refresh-time');
+  const progressFill = document.getElementById('progress-fill');
+
+  /* ── Auto-grow textarea ───────────────────────────────────────────────── */
+  inputEl.addEventListener('input', () => {
+    inputEl.style.height = 'auto';
+    inputEl.style.height = Math.min(inputEl.scrollHeight, 120) + 'px';
+  });
+
+  /* ── Send on Enter (Shift+Enter = newline) ────────────────────────────── */
+  inputEl.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  });
+  sendBtn.addEventListener('click', sendMessage);
+
+  /* ── Chat ─────────────────────────────────────────────────────────────── */
+  function appendMessage(role, text, sources = []) {
+    welcomeEl?.remove();
+
+    const wrapper = document.createElement('div');
+    wrapper.className = `msg ${role}`;
+
+    const label = document.createElement('div');
+    label.className = 'label';
+    label.textContent = role === 'user' ? 'Você' : role === 'error' ? 'Erro' : 'CaféIQ';
+    wrapper.appendChild(label);
+
+    const bubble = document.createElement('div');
+    bubble.className = 'bubble';
+    bubble.textContent = text;
+    wrapper.appendChild(bubble);
+
+    if (sources.length > 0) {
+      const src = document.createElement('div');
+      src.className = 'sources';
+      src.innerHTML = '<span>Fontes:</span> ' +
+        sources.filter(Boolean).map(s => `<span class="source-tag">${s}</span>`).join('');
+      wrapper.appendChild(src);
+    }
+
+    messagesEl.appendChild(wrapper);
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+    return wrapper;
+  }
+
+  function showTyping() {
+    welcomeEl?.remove();
+    const wrapper = document.createElement('div');
+    wrapper.className = 'msg assistant typing';
+    wrapper.id = 'typing-indicator';
+
+    const label = document.createElement('div');
+    label.className = 'label';
+    label.textContent = 'CaféIQ';
+    wrapper.appendChild(label);
+
+    const bubble = document.createElement('div');
+    bubble.className = 'bubble';
+    bubble.innerHTML = '<div class="dot"></div><div class="dot"></div><div class="dot"></div>';
+    wrapper.appendChild(bubble);
+
+    messagesEl.appendChild(wrapper);
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+  }
+
+  function removeTyping() {
+    document.getElementById('typing-indicator')?.remove();
+  }
+
+  async function sendMessage() {
+    const text = inputEl.value.trim();
+    if (!text) return;
+
+    appendMessage('user', text);
+    inputEl.value = '';
+    inputEl.style.height = 'auto';
+    sendBtn.disabled = true;
+    showTyping();
+
+    try {
+      const res = await fetch(`${API_BASE}/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pergunta: text }),
+      });
+
+      const data = await res.json();
+      removeTyping();
+
+      if (!res.ok) {
+        const detail = data.detail ?? data.error ?? `HTTP ${res.status}`;
+        appendMessage('error', `Erro ao processar a pergunta: ${detail}`);
+      } else {
+        appendMessage('assistant', data.resposta ?? '(sem resposta)', data.fontes ?? []);
+      }
+    } catch (err) {
+      removeTyping();
+      appendMessage('error', `Falha de comunicação com o servidor: ${err.message}`);
+    } finally {
+      sendBtn.disabled = false;
+      inputEl.focus();
+    }
+  }
+
+  /* ── Health poll ──────────────────────────────────────────────────────── */
+  const SERVICE_LABELS = {
+    rag:         'Serviço RAG',
+    mcp:         'Serviço MCP',
+    controlador: 'Controlador',
+  };
+
+  function renderServices(data) {
+    // Gateway badge
+    const gwOk = data.gateway === 'ok';
+    gatewayStatus.textContent  = gwOk ? '● Online' : '● Offline';
+    gatewayStatus.style.color  = gwOk ? 'var(--ok)' : 'var(--err)';
+
+    const services = data.services ?? [];
+    serviceList.innerHTML = '';
+
+    if (services.length === 0) {
+      serviceList.innerHTML = '<p style="font-size:.78rem;color:var(--text-muted);padding:8px 4px">Nenhum serviço reportado.</p>';
+      return;
+    }
+
+    for (const svc of services) {
+      const ok = svc.status === 'ok';
+      const card = document.createElement('div');
+      card.className = `service-card ${ok ? 'ok' : 'err'}`;
+
+      const row = document.createElement('div');
+      row.className = 'service-row';
+
+      const name = document.createElement('span');
+      name.className = 'service-name';
+      name.textContent = SERVICE_LABELS[svc.name] ?? svc.name;
+      row.appendChild(name);
+
+      const badge = document.createElement('span');
+      badge.className = `status-badge ${ok ? 'badge-ok' : 'badge-err'}`;
+      badge.textContent = ok ? 'OK' : 'FALHA';
+      row.appendChild(badge);
+
+      card.appendChild(row);
+
+      const meta = document.createElement('div');
+      meta.className = 'service-meta';
+      if (ok && svc.latencyMs !== undefined) {
+        meta.textContent = `${svc.latencyMs} ms`;
+      } else if (!ok && svc.error) {
+        meta.textContent = svc.error.length > 48 ? svc.error.slice(0, 48) + '…' : svc.error;
+      }
+      card.appendChild(meta);
+
+      serviceList.appendChild(card);
+    }
+  }
+
+  function renderError() {
+    gatewayStatus.textContent = '● Offline';
+    gatewayStatus.style.color = 'var(--err)';
+    serviceList.innerHTML = `
+      <div class="service-card err">
+        <div class="service-row">
+          <span class="service-name">API Gateway</span>
+          <span class="status-badge badge-err">FALHA</span>
+        </div>
+        <div class="service-meta">Não foi possível conectar a localhost:3000</div>
+      </div>`;
+  }
+
+  function setPlaceholders() {
+    const names = ['rag', 'mcp', 'controlador'];
+    serviceList.innerHTML = names.map(n => `
+      <div class="service-card loading">
+        <div class="service-row">
+          <span class="service-name">${SERVICE_LABELS[n]}</span>
+          <span class="status-badge badge-loading">—</span>
+        </div>
+      </div>`).join('');
+    gatewayStatus.textContent = '—';
+    gatewayStatus.style.color = 'var(--text-muted)';
+  }
+
+  async function fetchHealth() {
+    refreshTime.textContent = 'atualizando…';
+    try {
+      const res = await fetch(`${API_BASE}/health`, { signal: AbortSignal.timeout(5000) });
+      const data = await res.json();
+      renderServices(data);
+    } catch {
+      renderError();
+    } finally {
+      const now = new Date();
+      refreshTime.textContent = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    }
+  }
+
+  /* ── Progress bar countdown ───────────────────────────────────────────── */
+  let progressStart = null;
+
+  function animateProgress() {
+    progressStart = performance.now();
+    progressFill.style.transition = 'none';
+    progressFill.style.width = '0%';
+
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        progressFill.style.transition = `width ${HEALTH_INTERVAL}ms linear`;
+        progressFill.style.width = '100%';
+      });
+    });
+  }
+
+  /* ── Boot ─────────────────────────────────────────────────────────────── */
+  setPlaceholders();
+  fetchHealth();
+  animateProgress();
+
+  setInterval(() => {
+    fetchHealth();
+    animateProgress();
+  }, HEALTH_INTERVAL);
+
+  inputEl.focus();
+</script>
+</body>
+</html>
