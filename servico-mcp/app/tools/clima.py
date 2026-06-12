@@ -1,31 +1,44 @@
+import logging
 import random
 
+import requests
 
-_CONDITIONS = ["Ensolarado", "Parcialmente nublado", "Nublado", "Chuva leve", "Chuva forte"]
+log = logging.getLogger(__name__)
 
-_REGIONS: dict[str, dict] = {
-    "patrocinio":   {"temp_base": 24, "humidity_base": 65},
-    "araguari":     {"temp_base": 23, "humidity_base": 68},
-    "guaxupe":      {"temp_base": 22, "humidity_base": 70},
-    "varginha":     {"temp_base": 21, "humidity_base": 72},
-    "mococa":       {"temp_base": 25, "humidity_base": 60},
-    "lavras":       {"temp_base": 22, "humidity_base": 74},  # Fix 5: cidade padrão do scrapper
+_HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/124.0.0.0 Safari/537.36"
+    ),
 }
+
+_WTTR_URL = "https://wttr.in/{cidade}?format=j1"
+
+_FALLBACK_CONDITIONS = ["Ensolarado", "Parcialmente nublado", "Nublado", "Chuva leve"]
 
 
 def run(params: dict) -> dict:
-    cidade_raw: str = params.get("cidade", "")
-    cidade_key = cidade_raw.lower().strip()
-
-    region = _REGIONS.get(cidade_key, {"temp_base": 23, "humidity_base": 65})
-    temp = round(region["temp_base"] + random.uniform(-3, 3), 1)
-    humidity = min(100, max(0, region["humidity_base"] + random.randint(-10, 10)))
-    condition = random.choice(_CONDITIONS)
-
-    return {
-        "cidade": cidade_raw or "desconhecida",
-        "temperatura_c": temp,
-        "umidade_pct": humidity,
-        "condicao": condition,
-        "fonte": "mock — substituir por API de clima",
-    }
+    cidade: str = params.get("cidade", "Lavras,MG").strip()
+    try:
+        url = _WTTR_URL.format(cidade=cidade.replace(" ", "+"))
+        resp = requests.get(url, headers=_HEADERS, timeout=8)
+        resp.raise_for_status()
+        data = resp.json()
+        cur = data["current_condition"][0]
+        return {
+            "cidade": cidade,
+            "temperatura_c": float(cur["temp_C"]),
+            "umidade_pct": int(cur["humidity"]),
+            "condicao": cur["weatherDesc"][0]["value"],
+            "fonte": "wttr.in",
+        }
+    except Exception as exc:
+        log.warning("clima MCP — usando fallback para '%s' (%s)", cidade, exc)
+        return {
+            "cidade": cidade,
+            "temperatura_c": round(random.uniform(18.0, 30.0), 1),
+            "umidade_pct": random.randint(45, 90),
+            "condicao": random.choice(_FALLBACK_CONDITIONS),
+            "fonte": "fallback",
+        }
