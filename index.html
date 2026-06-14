@@ -21,7 +21,6 @@
       --ok-bg:      #e8f5ec;
       --err:        #b83232;
       --err-bg:     #fdeaea;
-      --warn-bg:    #fff8e1;
       --shadow:     0 2px 8px rgba(44,21,3,.10);
       --radius:     10px;
     }
@@ -37,11 +36,13 @@
     .app {
       display: grid;
       grid-template-rows: 56px 1fr;
-      grid-template-columns: 1fr 280px;
+      grid-template-columns: 1fr;
       grid-template-areas:
-        "header header"
-        "chat   sidebar";
+        "header"
+        "chat";
       height: 100vh;
+      max-width: 860px;
+      margin: 0 auto;
     }
 
     /* ── Header ────────────────────────────────────────────────────────── */
@@ -231,134 +232,6 @@
     button#send-btn:hover:not(:disabled)  { background: var(--espresso); }
     button#send-btn:active:not(:disabled) { transform: scale(.97); }
     button#send-btn:disabled { background: var(--caramel); cursor: not-allowed; }
-
-    /* ── Sidebar ───────────────────────────────────────────────────────── */
-    .sidebar {
-      grid-area: sidebar;
-      background: #fff;
-      border-left: 1px solid var(--border);
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-    }
-
-    .sidebar-header {
-      padding: 14px 16px 10px;
-      border-bottom: 1px solid var(--border);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-
-    .sidebar-header h2 {
-      font-size: .8rem;
-      font-weight: 700;
-      letter-spacing: .07em;
-      text-transform: uppercase;
-      color: var(--coffee);
-    }
-
-    #refresh-time {
-      font-size: .68rem;
-      color: var(--text-muted);
-    }
-
-    .service-list {
-      flex: 1;
-      overflow-y: auto;
-      padding: 12px 12px;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-
-    .service-card {
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 10px 12px;
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-      transition: border-color .3s;
-    }
-
-    .service-card.ok  { border-left: 3px solid var(--ok); }
-    .service-card.err { border-left: 3px solid var(--err); }
-    .service-card.loading { border-left: 3px solid var(--caramel); }
-
-    .service-row {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 8px;
-    }
-
-    .service-name {
-      font-size: .82rem;
-      font-weight: 600;
-      color: var(--text);
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
-    .status-badge {
-      font-size: .68rem;
-      font-weight: 700;
-      letter-spacing: .05em;
-      text-transform: uppercase;
-      padding: 2px 8px;
-      border-radius: 99px;
-      flex-shrink: 0;
-    }
-
-    .badge-ok      { background: var(--ok-bg);   color: var(--ok); }
-    .badge-err     { background: var(--err-bg);   color: var(--err); }
-    .badge-loading { background: var(--warn-bg);  color: #7a5c00; }
-
-    .service-meta {
-      font-size: .7rem;
-      color: var(--text-muted);
-    }
-
-    /* gateway summary row */
-    .gateway-row {
-      padding: 8px 12px;
-      margin: 0 12px 0;
-      border-radius: 8px;
-      background: var(--cream);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      font-size: .78rem;
-      font-weight: 600;
-      color: var(--coffee);
-      flex-shrink: 0;
-    }
-
-    #progress-bar {
-      height: 2px;
-      background: var(--cream);
-      flex-shrink: 0;
-      overflow: hidden;
-    }
-    #progress-fill {
-      height: 100%;
-      width: 0%;
-      background: var(--caramel);
-      transition: width linear;
-    }
-
-    /* ── Responsive ────────────────────────────────────────────────────── */
-    @media (max-width: 640px) {
-      .app {
-        grid-template-areas:
-          "header header"
-          "chat   chat";
-        grid-template-columns: 1fr;
-      }
-      .sidebar { display: none; }
-    }
   </style>
 </head>
 <body>
@@ -392,42 +265,15 @@
     </div>
   </main>
 
-  <!-- Sidebar -->
-  <aside class="sidebar">
-    <div class="sidebar-header">
-      <h2>Serviços</h2>
-      <span id="refresh-time">—</span>
-    </div>
-
-    <div id="progress-bar"><div id="progress-fill"></div></div>
-
-    <div class="gateway-row" id="gateway-row">
-      <span>API Gateway</span>
-      <span id="gateway-status">—</span>
-    </div>
-
-    <div class="service-list" id="service-list">
-      <!-- populated by JS -->
-    </div>
-  </aside>
-
 </div>
 
 <script>
-  /* ── Constants ────────────────────────────────────────────────────────── */
-  const API_BASE        = 'http://localhost:3000';
-  const HEALTH_INTERVAL = 10_000; // ms
+  const API_BASE = 'http://localhost:3000';
 
-  /* ── DOM refs ─────────────────────────────────────────────────────────── */
-  const messagesEl   = document.getElementById('messages');
-  const welcomeEl    = document.getElementById('welcome');
-  const inputEl      = document.getElementById('input');
-  const sendBtn      = document.getElementById('send-btn');
-  const serviceList  = document.getElementById('service-list');
-  const gatewayRow   = document.getElementById('gateway-row');
-  const gatewayStatus= document.getElementById('gateway-status');
-  const refreshTime  = document.getElementById('refresh-time');
-  const progressFill = document.getElementById('progress-fill');
+  const messagesEl = document.getElementById('messages');
+  const welcomeEl  = document.getElementById('welcome');
+  const inputEl    = document.getElementById('input');
+  const sendBtn    = document.getElementById('send-btn');
 
   /* ── Auto-grow textarea ───────────────────────────────────────────────── */
   inputEl.addEventListener('input', () => {
@@ -532,126 +378,6 @@
       inputEl.focus();
     }
   }
-
-  /* ── Health poll ──────────────────────────────────────────────────────── */
-  const SERVICE_LABELS = {
-    rag:         'Serviço RAG',
-    mcp:         'Serviço MCP',
-    controlador: 'Controlador',
-  };
-
-  function renderServices(data) {
-    // Gateway badge
-    const gwOk = data.gateway === 'ok';
-    gatewayStatus.textContent  = gwOk ? '● Online' : '● Offline';
-    gatewayStatus.style.color  = gwOk ? 'var(--ok)' : 'var(--err)';
-
-    const services = data.services ?? [];
-    serviceList.innerHTML = '';
-
-    if (services.length === 0) {
-      serviceList.innerHTML = '<p style="font-size:.78rem;color:var(--text-muted);padding:8px 4px">Nenhum serviço reportado.</p>';
-      return;
-    }
-
-    for (const svc of services) {
-      const ok = svc.status === 'ok';
-      const card = document.createElement('div');
-      card.className = `service-card ${ok ? 'ok' : 'err'}`;
-
-      const row = document.createElement('div');
-      row.className = 'service-row';
-
-      const name = document.createElement('span');
-      name.className = 'service-name';
-      name.textContent = SERVICE_LABELS[svc.name] ?? svc.name;
-      row.appendChild(name);
-
-      const badge = document.createElement('span');
-      badge.className = `status-badge ${ok ? 'badge-ok' : 'badge-err'}`;
-      badge.textContent = ok ? 'OK' : 'FALHA';
-      row.appendChild(badge);
-
-      card.appendChild(row);
-
-      const meta = document.createElement('div');
-      meta.className = 'service-meta';
-      if (ok && svc.latencyMs !== undefined) {
-        meta.textContent = `${svc.latencyMs} ms`;
-      } else if (!ok && svc.error) {
-        meta.textContent = svc.error.length > 48 ? svc.error.slice(0, 48) + '…' : svc.error;
-      }
-      card.appendChild(meta);
-
-      serviceList.appendChild(card);
-    }
-  }
-
-  function renderError() {
-    gatewayStatus.textContent = '● Offline';
-    gatewayStatus.style.color = 'var(--err)';
-    serviceList.innerHTML = `
-      <div class="service-card err">
-        <div class="service-row">
-          <span class="service-name">API Gateway</span>
-          <span class="status-badge badge-err">FALHA</span>
-        </div>
-        <div class="service-meta">Não foi possível conectar a localhost:3000</div>
-      </div>`;
-  }
-
-  function setPlaceholders() {
-    const names = ['rag', 'mcp', 'controlador'];
-    serviceList.innerHTML = names.map(n => `
-      <div class="service-card loading">
-        <div class="service-row">
-          <span class="service-name">${SERVICE_LABELS[n]}</span>
-          <span class="status-badge badge-loading">—</span>
-        </div>
-      </div>`).join('');
-    gatewayStatus.textContent = '—';
-    gatewayStatus.style.color = 'var(--text-muted)';
-  }
-
-  async function fetchHealth() {
-    refreshTime.textContent = 'atualizando…';
-    try {
-      const res = await fetch(`${API_BASE}/health`, { signal: AbortSignal.timeout(5000) });
-      const data = await res.json();
-      renderServices(data);
-    } catch {
-      renderError();
-    } finally {
-      const now = new Date();
-      refreshTime.textContent = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-    }
-  }
-
-  /* ── Progress bar countdown ───────────────────────────────────────────── */
-  let progressStart = null;
-
-  function animateProgress() {
-    progressStart = performance.now();
-    progressFill.style.transition = 'none';
-    progressFill.style.width = '0%';
-
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        progressFill.style.transition = `width ${HEALTH_INTERVAL}ms linear`;
-        progressFill.style.width = '100%';
-      });
-    });
-  }
-
-  /* ── Boot ─────────────────────────────────────────────────────────────── */
-  setPlaceholders();
-  fetchHealth();
-  animateProgress();
-
-  setInterval(() => {
-    fetchHealth();
-    animateProgress();
-  }, HEALTH_INTERVAL);
 
   inputEl.focus();
 </script>
