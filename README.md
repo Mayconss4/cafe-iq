@@ -138,7 +138,9 @@ open index.html            # macOS
 
 ## Exemplos de uso
 
-### Perguntar ao assistente (via API Gateway)
+### Linux / macOS
+
+#### Perguntar ao assistente (via API Gateway)
 
 ```bash
 curl -s -X POST http://localhost:3000/chat \
@@ -146,15 +148,7 @@ curl -s -X POST http://localhost:3000/chat \
   -d '{"pergunta": "Qual é a cotação atual do café arábica?"}' | jq
 ```
 
-Resposta esperada:
-```json
-{
-  "resposta": "A cotação atual do café arábica está em torno de 224 USc/lb no mercado ICE...",
-  "fontes": ["scrapper/cotacao", "scrapper/noticia"]
-}
-```
-
-### Invocar uma ferramenta MCP diretamente
+#### Invocar uma ferramenta MCP diretamente
 
 ```bash
 # Cotação do café
@@ -173,7 +167,7 @@ curl -s -X POST http://localhost:3000/mcp/tool \
   -d '{"tool": "noticias", "params": {}}' | jq
 ```
 
-### Indexar um documento manualmente
+#### Indexar um documento manualmente
 
 ```bash
 curl -s -X POST http://localhost:8001/ingest \
@@ -181,7 +175,7 @@ curl -s -X POST http://localhost:8001/ingest \
   -d '{"texto": "A safra 2025 de café arábica no Sul de Minas deve atingir 12 milhões de sacas, segundo a Conab.", "fonte": "conab-2025"}' | jq
 ```
 
-### Status dos serviços
+#### Status dos serviços
 
 ```bash
 # Saúde consolidada (via gateway)
@@ -191,22 +185,86 @@ curl -s http://localhost:3000/health | jq
 curl -s http://localhost:3001/status | jq
 ```
 
-### Forçar coleta imediata do scrapper
+#### Forçar coleta imediata do scrapper
 
 ```bash
 curl -s -X POST http://localhost:3001/forcar-ingestao | jq
 ```
 
-### Listar ferramentas MCP disponíveis
+#### Listar ferramentas MCP disponíveis
 
 ```bash
 curl -s http://localhost:8002/tools | jq
 ```
 
-### Ver logs do controlador
+#### Ver logs do controlador
 
 ```bash
 curl -s http://localhost:3001/logs | jq
+```
+
+### Windows (PowerShell)
+
+> Use `curl.exe` no PowerShell para evitar o alias de `curl` que aponta para `Invoke-WebRequest`.
+
+#### Perguntar ao assistente (via API Gateway)
+
+```powershell
+curl.exe -s -X POST http://localhost:3000/chat \
+  -H "Content-Type: application/json" \
+  -d '{"pergunta": "Qual é a cotação atual do café arábica?"}' | ConvertFrom-Json
+```
+
+#### Invocar uma ferramenta MCP diretamente
+
+```powershell
+# Cotação do café
+curl.exe -s -X POST http://localhost:3000/mcp/tool \
+  -H "Content-Type: application/json" \
+  -d '{"tool": "cotacao_cafe", "params": {}}' | ConvertFrom-Json
+
+# Clima em cidade produtora
+curl.exe -s -X POST http://localhost:3000/mcp/tool \
+  -H "Content-Type: application/json" \
+  -d '{"tool": "clima", "params": {"cidade": "Varginha"}}' | ConvertFrom-Json
+
+# Notícias recentes
+curl.exe -s -X POST http://localhost:3000/mcp/tool \
+  -H "Content-Type: application/json" \
+  -d '{"tool": "noticias", "params": {}}' | ConvertFrom-Json
+```
+
+#### Indexar um documento manualmente
+
+```powershell
+curl.exe -s -X POST http://localhost:8001/ingest \
+  -H "Content-Type: application/json" \
+  -d '{"texto": "A safra 2025 de café arábica no Sul de Minas deve atingir 12 milhões de sacas, segundo a Conab.", "fonte": "conab-2025"}' | ConvertFrom-Json
+```
+
+#### Status dos serviços
+
+```powershell
+curl.exe -s http://localhost:3000/health | ConvertFrom-Json
+curl.exe -s http://localhost:3001/status | ConvertFrom-Json
+```
+
+#### Forçar coleta imediata do scrapper
+
+```powershell
+curl.exe -s -X POST http://localhost:3001/forcar-ingestao | ConvertFrom-Json
+```
+
+#### Listar ferramentas MCP disponíveis
+
+```powershell
+curl.exe -s http://localhost:8002/tools | ConvertFrom-Json
+```
+
+#### Ver logs do controlador
+
+```powershell
+curl.exe -s http://localhost:3001/logs | ConvertFrom-Json
 ```
 
 ---
